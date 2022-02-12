@@ -1,38 +1,65 @@
-import { useEffect, useMemo, useState } from "react";
-import { ethers } from "ethers";
+import { useEffect, useState } from "react";
 
-const ethereum = window?.ethereum;
+const { ethereum } = window;
 
 const useMetaMask = (withListener = false) => {
-  const [wallet, setWallet] = useState(null);
+  const [currentWallets, setCurrentWallets] = useState([]);
 
-  const web3Provider = useMemo(
-    () => ethereum && new ethers.providers.Web3Provider(ethereum, "any"),
-    []
-  );
-
-  const checkProvider = provider => provider?.connection.url === "metamask";
-
-  const isMetaMaskInstalled = () => web3Provider && checkProvider(web3Provider);
-
-  const getWallet = async () => {
+  const connectWallet = async callback => {
     try {
-      setWallet(await web3Provider.send("eth_requestAccounts", []));
+      const wallets = await ethereum.request({
+        method: "eth_requestAccounts",
+      });
+
+      setCurrentWallets(wallets);
+      callback(false);
     } catch (e) {
-      if (e.code === 4001) return [];
+      console.error(e);
+      if (e.code === -32002) return "connection";
+    }
+  };
+
+  const getWallets = async () => {
+    try {
+      return await ethereum.request({ method: "eth_accounts" });
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
+  const checkIfWalletIsConnect = async callback => {
+    try {
+      if (!ethereum) return Boolean(ethereum);
+
+      const wallets = await getWallets();
+
+      if (wallets.length) {
+        setCurrentWallets(wallets);
+      } else {
+        callback(true);
+      }
+
+      return Boolean(ethereum);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   useEffect(() => {
-    if (web3Provider && withListener) {
-      web3Provider.provider.on("accountsChanged", setWallet);
+    if (ethereum && withListener) {
+      ethereum.on("accountsChanged", setCurrentWallets);
       return () => {
-        web3Provider.provider.removeListener("accountsChanged", setWallet);
+        ethereum.removeListener("accountsChanged", setCurrentWallets);
       };
     }
-  }, [web3Provider, withListener]);
+  }, [withListener]);
 
-  return { isMetaMaskInstalled, getWallet, wallet };
+  return {
+    connectWallet,
+    checkIfWalletIsConnect,
+    currentWallets,
+  };
 };
 
 export default useMetaMask;

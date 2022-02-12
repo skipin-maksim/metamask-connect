@@ -4,26 +4,33 @@ import Layout from "../Layout/Layout";
 import ModalInfo from "../Modals/ModalInfo";
 import useMetaMask from "../../hooks/useMetaMask";
 import useModal from "../../hooks/useModal";
+import ModalNoAcc from "../Modals/ModalNoAcc";
 
 const MainContent = () => {
   const [connectionInProgress, setConnectionInProgress] = useState(false);
 
-  const { closeModal, openModal, isShow } = useModal();
-  const { isMetaMaskInstalled, getWallet, wallet } = useMetaMask(true);
+  const [isShowModalInfo, openModalModalInfo, closeModalModalInfo] = useModal();
+  const [isShowModalNoAcc, openModalNoAcc, closeModalNoAcc] = useModal();
+  const { connectWallet, checkIfWalletIsConnect, currentWallets } =
+    useMetaMask(true);
 
   const connectionHandle = async () => {
     setConnectionInProgress(true);
 
-    if (!isMetaMaskInstalled()) {
-      setConnectionInProgress(false);
-      return openModal();
-    }
-
     try {
-      await getWallet();
+      const isConnected = await checkIfWalletIsConnect(openModalNoAcc);
+
+      if (!isConnected) {
+        setConnectionInProgress(false);
+        return openModalModalInfo();
+      }
+
+      const status = await connectWallet(closeModalNoAcc);
+      if (status === "connection") return setConnectionInProgress(true);
+
+      setConnectionInProgress(false);
     } catch (e) {
-      console.log(e);
-    } finally {
+      console.error(e);
       setConnectionInProgress(false);
     }
   };
@@ -32,9 +39,9 @@ const MainContent = () => {
     <>
       <StyledMain>
         <Layout>
-          {wallet ? (
+          {currentWallets?.length ? (
             <StyledWalletWrp>
-              <span>{wallet}</span>
+              <span>{currentWallets[0]}</span>
               <StyledWalletOverlay />
             </StyledWalletWrp>
           ) : (
@@ -43,13 +50,23 @@ const MainContent = () => {
               type="button"
               onClick={connectionHandle}
             >
-              Get wallet number
+              <span>
+                {connectionInProgress
+                  ? "Pleas open MetaMask to connect"
+                  : "Get wallet"}
+              </span>
+
+              <StyledLogo
+                src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
+                alt="MetaMask"
+              />
             </StyledConnectionBtn>
           )}
         </Layout>
       </StyledMain>
 
-      <ModalInfo isShow={isShow} closeModal={closeModal} />
+      <ModalInfo isShow={isShowModalInfo} closeModal={closeModalModalInfo} />
+      <ModalNoAcc isShow={isShowModalNoAcc} closeModal={closeModalNoAcc} />
     </>
   );
 };
@@ -57,18 +74,28 @@ const MainContent = () => {
 export default MainContent;
 
 const StyledConnectionBtn = styled.button`
-  padding: 15px;
+  padding: 8px;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
   border: none;
-  background: #2c4d97;
+  width: content-box;
+  background: #eee;
   border-radius: 5px;
-  color: #fff;
+  color: #494949;
   text-transform: uppercase;
+  font-weight: 600;
   cursor: pointer;
 
   &:disabled {
     filter: grayscale(0.4);
     cursor: progress;
   }
+`;
+
+const StyledLogo = styled.img`
+  max-width: 50px;
 `;
 
 const StyledMain = styled.main`

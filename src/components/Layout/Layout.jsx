@@ -7,7 +7,8 @@ const Layout = ({ children }) => {
 export default Layout;
 
 const StyledContainer = styled.div`
-  min-width: 1000px;
+  min-width: 320px;
+  max-width: 700px;
   margin: 0 auto;
   padding: 0 10px;
   display: flex;
